@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>NBA Player Archetypes</title>
+  <style>
+    .labels {
+      font-family: "Arial", sans-serif;
+      font-size: 12px;
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body>
+  <script type="text/javascript" src="https://d3js.org/d3.v5.min.js"></script>
+  <script>
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    const color = d3.scaleOrdinal()
+      .range(d3.schemeSet3
+        .concat(d3.interpolateRgb("#1f77b4", "#ff7f0e")(0.25))
+        .concat(d3.interpolateRgb("#1f77b4", "#ff7f0e")(0.75))
+      );
+
+    const svg = d3.select("body")
+      .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    svg.append("text")
+      .attr("x", 20)
+      .attr("y", 40)
+      .attr("font-family", "Arial")
+      .attr("font-size", "24px")
+      .attr("font-weight", "bold")
+      .text("NBA Player Archetypes");
+
+    svg.append('text')
+      .attr('x', 40)
+      .attr('y', 80)
+      .attr('font-family', 'Arial')
+      .attr('font-size', '16px')
+      .text('By: Richard Moss, Paul Choi, Matt Chang and Ben Lewis')
+
+    window.addEventListener("resize", () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      svg.attr("viewBox", `0 0 ${width} ${height}`);
+    });
+
+    const groupInfo = [
+        ['Versatile 2-Way Forces', 'PG/SF/SG', 'High Double Doubles, Usage and Impact on both ends', 'Khris Middleton, Jayson Tatum'],
+        ['First Option Guards', 'PG/SG/SF', 'High FG%, Efficient Scorers', 'Kyrie Irving, Jaylen Brown'],
+        ['Interior Powerhouses', 'PF/C/Some PG', 'High Paint Scoring, Driving, Attack the Rim', 'Dirk Nowitzki, Anthony Davis'],
+        ['Off-Ball 2-Way Players', 'PF/SF', 'Slash/Cut Attackers, Lengthy Defenders', 'Pascal Siakam, Tim Duncan'],
+        ['Lock Down Defenders', 'SF/PF/C', 'Low Opp Points, High Blocks/Steals', 'Kawhi Leonard, Lebron James'],
+        ['3-and-D Role Players', 'SG/SF/PF', 'Mostly Bench Players, High 3PA, Low +/-', 'CJ Miles, Tyus Jones'],
+        ['High Hustle', 'PG/SG', 'High Speed, High Mileage, High Touches', 'Russell Westbrook, Kyle Lowry'],
+        ['Prolific Playmakers', 'Mixed Roles', 'High AST:TOV, High Touches and Passes', 'Chris Paul, Marc Gasol'],
+        ['Bully Ballers', 'PF/C', 'High Blocks, Rebounds, Personal Fouls', 'Joel Embiid, Steven Adams'],
+        ['Clutch Machines', 'Mixed Positions', 'High PIE, POSS', 'Kevin Durant, Damian Lillard'],
+        ['Paint Protectors', 'PF/C', 'Strong Defense, Little Offensive Impact', 'DeAndre Jordan, Rudy Gobert'],
+        ['Veteran Presence', 'Mixed', 'Generally Older, Mix of Stats, All-Around Contributor', 'David West, Bismack Biyombo'],
+        ['Backup Big Men', 'C', 'Low-Scoring Bench Centers, Little Offensive Usage', 'Aaron Baynes, Daniel Theis'],
+        ['Generic Role Players', 'Mixed Roles', 'Generally Low Statistical Value', 'Patty Mills, George Hill']
+      ];
+
+      const infoRect = svg.append("rect")
+        .attr("x", width - 360)
+        .attr("y", height - 150)
+        .attr("width", 350)
+        .attr("height", 140)
+        .attr("fill", "orange")
+        .attr("stroke", "black")
+        .attr("stroke-width", 2)
+        .attr("opacity", 0.6)
+        .attr("rx", 10)
+        .attr("ry", 10);
+
+        const groupDropdown = d3.select("body").append("select")
+          .attr("id", "groupDropdown")
+          .style("position", "absolute")
+          .style("left", `${width - 320}px`)
+          .style("top", `${height - 140}px`)
+          .style("font-size", "14px")
+          .on("change", function () {
+            const selectedIndex = this.selectedIndex;
+            updateInfoText(selectedIndex);
+          });
+
+
+      const dropdownOptions = ["Group Information"].concat(groupInfo.map((_, index) => `Group ${index}`));
+
+      groupDropdown.selectAll("option")
+        .data(dropdownOptions)
+        .enter()
+        .append("option")
+        .text(d => d);
+
+        const infoText = svg.append("text")
+          .attr("x", width - 340)
+          .attr("y", height - 90) // Move the starting position of the text further down
+          .attr("fill", "black")
+          .style("font-size", "14px")
+          .style("font-weight", "bold");
+
+          function updateInfoText(groupIndex) {
+            if (groupIndex === 0) {
+              infoText.text(""); // Clear the text if "Group Information" is selected
+            } else {
+              const groupData = groupInfo[groupIndex - 1];
+
+              infoText.selectAll("tspan")
+                .data(groupData)
+                .join("tspan")
+                .attr("x", width - 340)
+                .attr("dy", (d, i) => (i === 0 ? 0 : "1.4em")) // Increase the space between bullet points
+                .text(d => d);
+            }
+          }
+
+        groupDropdown.on("change", function () {
+          const selectedIndex = this.selectedIndex;
+          updateInfoText(selectedIndex);
+        });
+
+    Promise.all([
+      d3.csv("position_team.csv"),
+      d3.csv("output.csv")
+    ]).then(([nodeData, edgeData]) => {
+      const nodes = nodeData.map(d => ({
+        id: d.id,
+        group: d.group,
+        season: d.season,
+        position: d.pos,
+        team: d.team,
+        age: d.AGE,
+        fg_pct: d['FG%'],
+        points: d.PTS,
+        assists: d.AST,
+        rebounds: d.REB,
+        steals: d.STL,
+        blocks: d.BLK,
+        turnovers: d.TOV,
+        plus_minus: d['+/-'],
+        label: `${d.name} (${d.season})`
+      }));
+
+      const nodeMap = new Map(nodes.map(d => [d.id, d]));
+      const links = edgeData
+        .filter(d => nodeMap.has(d.source) && nodeMap.has(d.target))
+        .map(d => ({
+          source: d.source,
+          target: d.target,
+          value: +d.total
+        }));
+
+        // Define the centers of each group randomly
+        const groupCenters = {};
+        const numGroups = 14; // Change this to the number of groups you have
+        const padding = 100;
+        for (let i = 0; i < numGroups; i++) {
+          const x = padding + Math.random() * (width - 2 * padding);
+          const y = padding + Math.random() * (height - 2 * padding);
+          groupCenters[i] = {x, y};
+        }
+
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links)
+            .id(d => d.id)
+            .distance((d) => d.source.group === d.target.group ? 200 : 200))
+          .force("charge", d3.forceManyBody().strength(-100))
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force("x", d3.forceX().strength(0.1).x(function(d) {
+            // Attract nodes in the same group towards each other
+            return groupCenters[d.group].x;
+          }))
+          .force("y", d3.forceY().strength(0.1).y(function(d) {
+            // Attract nodes in the same group towards each other
+            return groupCenters[d.group].y;
+          }));
+
+
+        // Update the x and y functions to use d.group directly
+        simulation.force("x").x(function(d) {
+          return groupCenters[d.group].x;
+        });
+        simulation.force("y").y(function(d) {
+          return groupCenters[d.group].y;
+        });
+
+
+      const skippedEdgesCount = edgeData.length - links.length;
+      if (skippedEdgesCount > 0) {
+        console.log(`${skippedEdgesCount} edges were skipped due to lack of games played or minutes.`);
+      }
+
+      const linkColor = d3.scaleSequential(d3.interpolatePlasma).domain([0, d3.max(links, d => d.value)]);
+      let link = svg.append("g")
+        .attr("class", "links")
+        .selectAll("line")
+        .data(links)
+        .enter().append("line")
+        .attr("stroke-width", 0.5)
+        .attr("stroke", d => linkColor(d.value))
+        .attr("stroke-opacity", 0.3);
+
+
+        let node = svg.append("g")
+          .attr("class", "nodes")
+          .selectAll("circle")
+          .data(nodes)
+          .enter().append("circle")
+          .attr("r", 8)
+          .attr("fill", d => color(d.group))
+          .on("mouseover", showLabel)
+          .on("mouseout", hideLabel)
+          .call(drag(simulation));
+
+          // Create player stats rectangle and text container
+        const statsRect = svg.append("rect")
+          .attr("x", 10)
+          .attr("y", height - 300)
+          .attr("width", 240)
+          .attr("height", 280)
+          .attr("fill", "orange")
+          .attr("stroke", "black")
+          .attr("stroke-width", 2)
+          .attr("opacity", 0)
+          .attr("rx", 10)
+          .attr("ry", 10);
+
+        const statsTitle = svg.append("text")
+          .attr("x", 80)
+          .attr("y", height - 270)
+          .text("Player Stats")
+          .attr("font-size", "18px")
+          .attr("font-weight", "bold")
+          .attr("fill", "black")
+          .attr("opacity", 0);
+
+        const statsText = svg.append("text")
+          .attr("x", 20)
+          .attr("y", height - 250)
+          .attr("fill", "black")
+          .attr("opacity", 0)
+          .style("font-size", "14px");
+
+          const arrowInstructions = svg.append("text")
+            .attr("x", 20)
+            .attr("y", height - 245)
+            .attr("font-size", "11px")
+            .attr("fill", "black")
+            .attr("opacity", 0)
+            .html("Press right arrow key to jump to a similar player");
+
+        // Function to show player stats on rectangle
+        function showPlayerStats(node) {
+          statsRect.attr("opacity", 0.6);
+          statsTitle.attr("opacity", 1);
+          statsText.attr("opacity", 1);
+          arrowInstructions.attr('opacity', 1);
+
+          const lines = [
+            `Player: ${node.label}`,
+            `Age: ${node.age}`,
+            `Team: ${node.team}`,
+            `PTS: ${node.points}`,
+            `AST: ${node.assists}`,
+            `REB: ${node.rebounds}`,
+            `STL: ${node.steals}`,
+            `BLK: ${node.blocks}`,
+            `TOV: ${node.turnovers}`,
+            `FG%: ${node.fg_pct}`,
+            `+/-: ${node.plus_minus}`
+          ];
+
+          statsText.selectAll("tspan")
+            .data(lines)
+            .join("tspan")
+            .attr("x", 20)
+            .attr("dy", "1.2em")
+            .text(d => d);
+        }
+
+        function handleKeyPress(event) {
+          if (event.key === 'ArrowRight') {
+            const currentNodeData = d3.select(currentSelectedNode).datum();
+            moveToRandomConnectedNode(currentNodeData);
+          }
+        }
+
+
+        let currentSelectedNode = null;
+
+        function getVisibleNodes() {
+          const selectedPosition = d3.select("#positionFilter").property("value");
+          const selectedTeam = d3.select("#teamFilter").property("value");
+          const selectedSeason = d3.select("#seasonFilter").property("value");
+
+          return nodes.filter(
+            (d) =>
+              (selectedPosition === "All Positions" || d.position === selectedPosition) &&
+              (selectedTeam === "All Teams" || d.team === selectedTeam) &&
+              (selectedSeason === "All Seasons" || d.season === selectedSeason)
+          );
+        }
+
+        function getVisibleEdges() {
+          const selectedEdgeValue = d3.select("#edgeFilter").property("value");
+          return links.filter(
+            (d) =>
+              selectedEdgeValue === "All" || d.value >= +selectedEdgeValue
+          );
+        }
+
+        function moveToRandomConnectedNode(currentNodeData) {
+          const visibleNodes = getVisibleNodes();
+          const visibleEdges = getVisibleEdges();
+
+          // Get connected nodes that are visible
+          const connectedNodes = visibleNodes.filter((d) => {
+            return visibleEdges.some(
+              (link) =>
+                (link.source.id === currentNodeData.id && link.target.id === d.id) ||
+                (link.target.id === currentNodeData.id && link.source.id === d.id)
+            );
+          });
+
+          if (connectedNodes.length > 0) {
+            const randomNode = connectedNodes[Math.floor(Math.random() * connectedNodes.length)];
+
+            // Reset stroke and stroke-width for the previously selected node
+            d3.select(currentSelectedNode).attr("stroke", "").attr("stroke-width", "");
+
+            // Set stroke and stroke-width for the newly selected node
+            const newNode = node.filter(d => d.id === randomNode.id).node();
+            d3.select(newNode).attr("stroke", "black").attr("stroke-width", 4);
+
+            showPlayerStats(randomNode);
+            currentSelectedNode = newNode;
+          } else {
+            console.log("No connected nodes found that meet the filter criteria.");
+          }
+        }
+        // Update node event listeners
+        // Update node event listeners
+        node.on("click", function(d) {
+            // Reset stroke and stroke-width for the previously selected node
+            if (currentSelectedNode) {
+              d3.select(currentSelectedNode).attr("stroke", "").attr("stroke-width", "");
+              hideLabel(currentSelectedNode);
+            }
+
+            // Set stroke and stroke-width for the newly selected node
+            d3.select(this).attr("stroke", "black").attr("stroke-width", 4);
+
+            showPlayerStats(d);
+            showLabel(d);
+            currentSelectedNode = this;
+          });
+
+
+          // Move stats container to bottom left
+          const statsWidth = statsRect.attr("width");
+          const statsHeight = statsRect.attr("height");
+          statsRect.attr("x", 10)
+            .attr("y", height - statsHeight - 20);
+          statsTitle.attr("x", 80)
+            .attr("y", height - statsHeight + 10);
+          statsText.attr("x", 20)
+            .attr("y", height - statsHeight + 40);
+
+
+        let label = svg.append("g")
+          .attr("class", "labels")
+          .selectAll("text")
+          .data(nodes)
+          .enter().append("text")
+          .text(d => d.label)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("text-anchor", "middle")
+          .attr("dy", ".35em");
+
+        simulation.nodes(nodes).on("tick", ticked);
+        simulation.force("link").links(links);
+
+        function ticked() {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node
+            .attr("cx", d => d.x = Math.max(8, Math.min(width - 8, d.x)))
+            .attr("cy", d => d.y = Math.max(8, Math.min(height - 8, d.y)));
+
+          label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y);
+        }
+
+        function showLabel(d) {
+          label.filter(l => l.id === d.id).style("visibility", "visible");
+        }
+
+        function hideLabel(d) {
+          label.filter(l => l.id === d.id).style("visibility", "hidden");
+        }
+
+        createLegend();
+        createSeasonFilter();
+        createEdgeFilter();
+        createNodeFilter();
+        createTeamFilter();
+        createPositionFilter();
+
+      function createLegend() {
+        const groups = Array.from(new Set(nodes.map(d => d.group))).sort((a, b) => a - b);
+        const legend = svg.selectAll(".legend")
+          .data(groups)
+          .enter().append("g")
+          .attr("class", "legend")
+          .attr("transform", (d, i) => `translate(${width - 100},${i * 20 + 20})`);
+
+        legend.append("rect")
+          .attr("x", 0)
+          .attr("y", 0)
+          .attr("width", 10)
+          .attr("height", 10)
+          .style("fill", d => color(d));
+
+        legend.append("text")
+          .attr("x", 15)
+          .attr("y", 10)
+          .text(d => `Group ${d}`)
+          .attr("font-family", "Arial")
+          .attr("font-size", "12px")
+          .attr("fill", "black");
+      }
+
+      function createSeasonFilter() {
+        const seasons = ["All Seasons", ...Array.from(new Set(nodes.map(d => d.season)))].sort();
+        const seasonDropdown = d3.select("body").append("select")
+          .attr("id", "seasonFilter")
+          .on("change", () => applyFilter());
+
+        seasonDropdown.selectAll("option")
+          .data(seasons)
+          .enter().append("option")
+          .attr("value", d => d)
+          .text(d => d);
+
+        // Select the first non-"All Seasons" season by default
+        seasonDropdown.property("value", seasons.find(s => s !== "All Seasons"));
+      }
+
+
+      function createEdgeFilter() {
+        const edgeValues = Array.from(new Set(links.map(d => d.value))).sort((a, b) => a - b);
+        const edgeDropdown = d3.select("body").append("select")
+          .attr("id", "edgeFilter")
+          .on("change", updateGraph);
+
+        edgeDropdown.selectAll("option")
+          .data(["All", ...edgeValues])
+          .enter().append("option")
+          .attr("value", d => d)
+          .text(d => d === "All" ? "All edges" : `Edges with value greater than or equal to ${d}`);
+
+          function updateGraph() {
+            const selectedEdgeValue = d3.select("#edgeFilter").property("value");
+            link.style("display", d => (selectedEdgeValue === "All" || d.value >= +selectedEdgeValue) ? "block" : "none");
+            applyFilter();
+          }
+      }
+
+function createNodeFilter() {
+  const nodeFilterOptions = ["Show unconnected nodes", "Don't show unconnected nodes"];
+  const nodeFilterDropdown = d3.select("body").append("select")
+    .attr("id", "nodeFilter")
+    .on("change", updateGraph);
+
+  nodeFilterDropdown.selectAll("option")
+    .data(nodeFilterOptions)
+    .enter().append("option")
+    .attr("value", d => d)
+    .text(d => d);
+
+  function updateGraph() {
+    applyFilter();
+  }
+}
+
+function createTeamFilter() {
+  const teams = Array.from(new Set(nodes.map(d => d.team))).sort();
+  const teamDropdown = d3.select("body").append("select")
+    .attr("id", "teamFilter")
+    .on("change", updateGraph);
+
+  teamDropdown.selectAll("option")
+    .data(["All Teams", ...teams])
+    .enter().append("option")
+    .attr("value", d => d)
+    .text(d => d);
+
+  function updateGraph() {
+    applyFilter();
+  }
+}
+
+  function createPositionFilter() {
+    const positions = Array.from(new Set(nodes.map(d => d.position))).sort();
+    const positionDropdown = d3.select("body").append("select")
+      .attr("id", "positionFilter")
+      .on("change", updateGraph);
+
+    positionDropdown.selectAll("option")
+      .data(["All Positions", ...positions])
+      .enter().append("option")
+      .attr("value", d => d)
+      .text(d => d);
+
+    function updateGraph() {
+      const selectedPosition = d3.select("#positionFilter").property("value");
+      node.style("display", d => (selectedPosition === "All Positions" || d.position === selectedPosition) ? "block" : "none");
+      label.style("display", d => (selectedPosition === "All Positions" || d.position === selectedPosition) ? "block" : "none");
+      applyFilter();
+      }
+
+    }
+
+    function applyFilter() {
+      const selectedPosition = d3.select("#positionFilter").property("value");
+      const selectedTeam = d3.select("#teamFilter").property("value");
+      const selectedEdgeValue = d3.select("#edgeFilter").property("value");
+      const selectedSeason = d3.select("#seasonFilter").property("value");
+      const showUnconnectedNodes = d3.select("#nodeFilter").property("value") === "Show unconnected nodes";
+
+      const connectedNodes = new Set();
+      link.style("display", function (d) {
+        const positionFilterSource = selectedPosition === "All Positions" || d.source.position === selectedPosition;
+        const teamFilterSource = selectedTeam === "All Teams" || d.source.team === selectedTeam;
+        const seasonFilterSource = selectedSeason === "All Seasons" || d.source.season === selectedSeason;
+        const positionFilterTarget = selectedPosition === "All Positions" || d.target.position === selectedPosition;
+        const teamFilterTarget = selectedTeam === "All Teams" || d.target.team === selectedTeam;
+        const seasonFilterTarget = selectedSeason === "All Seasons" || d.target.season === selectedSeason;
+        const edgeFilter = selectedEdgeValue === "All" || d.value === +selectedEdgeValue;
+        const showLink = positionFilterSource && teamFilterSource && seasonFilterSource && positionFilterTarget && teamFilterTarget && seasonFilterTarget && edgeFilter;
+        if (showLink) {
+          connectedNodes.add(d.source.id);
+          connectedNodes.add(d.target.id);
+        }
+        return showLink ? "block" : "none";
+      });
+
+      node.style("display", function (d) {
+        const positionFilter = selectedPosition === "All Positions" || d.position === selectedPosition;
+        const teamFilter = selectedTeam === "All Teams" || d.team === selectedTeam;
+        const seasonFilter = selectedSeason === "All Seasons" || d.season === selectedSeason;
+        const connectedFilter = showUnconnectedNodes || connectedNodes.has(d.id);
+        return (positionFilter && teamFilter && seasonFilter && connectedFilter) ? "block" : "none";
+      });
+
+      label.style("display", function (d) {
+        const positionFilter = selectedPosition === "All Positions" || d.position === selectedPosition;
+        const teamFilter = selectedTeam === "All Teams" || d.team === selectedTeam;
+        const seasonFilter = selectedSeason === "All Seasons" || d.season === selectedSeason;
+        const connectedFilter = showUnconnectedNodes || connectedNodes.has(d.id);
+        return (positionFilter && teamFilter && seasonFilter && connectedFilter) ? "block" : "none";
+      });
+      simulation.force("charge")
+        .strength((d) => d.visible ? -100 : 0);
+
+      // Restart the simulation
+      simulation.alpha(1).restart();
+    }
+
+
+      function ticked() {
+        link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+
+        node
+          .attr("cx", d => d.x = Math.max(8, Math.min(width - 8, d.x)))
+          .attr("cy", d => d.y = Math.max(8, Math.min(height - 8, d.y)));
+
+        label
+          .attr("x", d => d.x)
+          .attr("y", d => d.y);
+      }
+
+      function showLabel(d) {
+        label.filter(l => l.id === d.id).style("visibility", "visible");
+      }
+
+      function hideLabel(d) {
+        label.filter(l => l.id === d.id).style("visibility", "hidden");
+      }
+
+      function drag(simulation) {
+        function dragstarted(d) {
+          if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+
+        function dragged(d) {
+          d.fx = d3.event.x;
+          d.fy = d3.event.y;
+        }
+
+        function dragended(d) {
+          if (!d3.event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+
+        return d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended);
+      }
+
+  applyFilter();
+  document.addEventListener('keydown', handleKeyPress);
+
+});
+
+    </script>
+  </body>
+</html>
