@@ -2,7 +2,6 @@
 <head>
   <meta charset="utf-8">
   <title>NBA Player Archetypes</title>
-  <meta http-equiv="Permissions-Policy" content="interest-cohort=()"> <!-- remove this line -->
   <style>
     .labels {
       font-family: "Arial", sans-serif;
@@ -44,6 +43,13 @@
       .attr('font-family', 'Arial')
       .attr('font-size', '16px')
       .text('By: Richard Moss, Paul Suk, Matt Chang and Ben Lewis')
+
+      svg.append('text')
+        .attr('x', 40)
+        .attr('y', 100)
+        .attr('font-family', 'Arial')
+        .attr('font-size', '12px')
+        .text('Click on a player for more information')
 
     window.addEventListener("resize", () => {
       width = window.innerWidth;
@@ -181,16 +187,10 @@
           .force("y", d3.forceY().strength(0.1).y(function(d) {
             // Attract nodes in the same group towards each other
             return groupCenters[d.group].y;
+          }))
+          .force("collide", d3.forceCollide().radius(function(d) {
+            return d.radius + 2; // Add a small buffer to prevent overlap
           }));
-
-
-        // Update the x and y functions to use d.group directly
-        simulation.force("x").x(function(d) {
-          return groupCenters[d.group].x;
-        });
-        simulation.force("y").y(function(d) {
-          return groupCenters[d.group].y;
-        });
 
 
       const skippedEdgesCount = edgeData.length - links.length;
