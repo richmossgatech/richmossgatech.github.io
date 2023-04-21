@@ -134,7 +134,7 @@
         });
 
     Promise.all([
-      d3.csv("position_team.csv"),
+      d3.csv("nodeData.csv"),
       d3.csv("output.csv")
     ]).then(([nodeData, edgeData]) => {
       const nodes = nodeData.map(d => ({
@@ -144,14 +144,14 @@
         position: d.pos,
         team: d.team,
         age: d.AGE,
-        fg_pct: d['FG%'],
+        fg_pct: d.FG_PCT,
         points: d.PTS,
         assists: d.AST,
         rebounds: d.REB,
         steals: d.STL,
         blocks: d.BLK,
         turnovers: d.TOV,
-        plus_minus: d['+/-'],
+        plus_minus: d.PLUS_MINUS,
         label: `${d.name} (${d.season})`
       }));
 
@@ -286,13 +286,6 @@
             .text(d => d);
         }
 
-        function handleKeyPress(event) {
-          if (event.key === 'ArrowRight') {
-            const currentNodeData = d3.select(currentSelectedNode).datum();
-            moveToRandomConnectedNode(currentNodeData);
-          }
-        }
-
 
         let currentSelectedNode = null;
 
@@ -334,18 +327,64 @@
             const randomNode = connectedNodes[Math.floor(Math.random() * connectedNodes.length)];
 
             // Reset stroke and stroke-width for the previously selected node
-            d3.select(currentSelectedNode).attr("stroke", "").attr("stroke-width", "");
+            if (currentSelectedNode) {
+              d3.select(currentSelectedNode).attr("stroke", "").attr("stroke-width", "");
+              hideLabel(d3.select(currentSelectedNode).datum());
+            }
 
             // Set stroke and stroke-width for the newly selected node
             const newNode = node.filter(d => d.id === randomNode.id).node();
             d3.select(newNode).attr("stroke", "black").attr("stroke-width", 4);
 
             showPlayerStats(randomNode);
+            showLabel(randomNode);
             currentSelectedNode = newNode;
           } else {
             console.log("No connected nodes found that meet the filter criteria.");
           }
         }
+
+        function handleKeyPress(event) {
+          if (event.key === 'ArrowRight') {
+            const currentNodeData = d3.select(currentSelectedNode).datum();
+            moveToRandomConnectedNode(currentNodeData);
+          } else if (event.key === 'Enter') {
+            selectRandomVisibleNode();
+          }
+        }
+
+        function selectRandomVisibleNode() {
+          const visibleNodes = getVisibleNodes();
+          const visibleEdges = getVisibleEdges();
+
+          // Get nodes that have at least one visible edge connected to them
+          const nodesWithVisibleEdges = visibleNodes.filter((node) => {
+            return visibleEdges.some(
+              (edge) => edge.source.id === node.id || edge.target.id === node.id
+            );
+          });
+
+          if (nodesWithVisibleEdges.length > 0) {
+            const randomNode = nodesWithVisibleEdges[Math.floor(Math.random() * nodesWithVisibleEdges.length)];
+
+            // Reset stroke and stroke-width for the previously selected node
+            if (currentSelectedNode) {
+              d3.select(currentSelectedNode).attr("stroke", "").attr("stroke-width", "");
+              hideLabel(d3.select(currentSelectedNode).datum());
+            }
+
+            // Set stroke and stroke-width for the newly selected node
+            const newNode = node.filter(d => d.id === randomNode.id).node();
+            d3.select(newNode).attr("stroke", "black").attr("stroke-width", 4);
+
+            showPlayerStats(randomNode);
+            showLabel(randomNode);
+            currentSelectedNode = newNode;
+          } else {
+            console.log("No visible nodes found that meet the filter criteria.");
+          }
+        }
+
         // Update node event listeners
         // Update node event listeners
         node.on("click", function(d) {
